@@ -6,6 +6,7 @@ from schema import user
 from sanic import Blueprint
 from core.status import FAIL
 from core.response import resp_json
+from core.token import generate_token
 
 import models
 
@@ -53,9 +54,11 @@ class LoginView(GenericAPIView):
             return resp_json(FAIL, msg="用户不存在")
         if password != user.password:
             return resp_json(FAIL, msg="密码错误！")
+        token = generate_token(username)
         body = {
             "username": username,
             "password": password,
+            "token": token,
         }
         return resp_json(body=body)
 

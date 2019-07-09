@@ -7,7 +7,7 @@ import json
 from schema import project
 from sanic import Blueprint
 from core.response import resp_json
-
+from core.status import FAIL
 import models
 
 from .base import GenericAPIView
@@ -19,12 +19,16 @@ class ProjectView(GenericAPIView):
     """
     项目类api
     """
-    models = models.Project
+    model = models.Project
     schema_class = project.ProjectSchema
 
     async def get(self, request):
-        print(self.model)
-        return resp_json(msg="请求成功")
+        queryset = await self.model.all()
+
+        schema = self.get_schema(request)
+        result = schema.dump(queryset, many=True)
+
+        return resp_json(body=result.data)
 
 
 class DebugTalkView(GenericAPIView):
@@ -104,9 +108,10 @@ class ReportView(GenericAPIView):
 
 bp.add_route(ProjectView.as_view(), '/project/')
 bp.add_route(DebugTalkView.as_view(), '/debugtalk/')
-bp.add_route(ApiView.as_view(), '/api_list/')
+bp.add_route(TreeView.as_view(), '/tree/')
+bp.add_route(ApiView.as_view(), '/api/')
 bp.add_route(ConfigView.as_view(), '/config/')
-bp.add_route(CaseView.as_view(), '/case_list/')
+bp.add_route(CaseView.as_view(), '/case/')
 bp.add_route(CaseStepView.as_view(), '/case_step/')
 bp.add_route(HostIPView.as_view(), '/host/')
 bp.add_route(VariablesView.as_view(), '/variables/')
