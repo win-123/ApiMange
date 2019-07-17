@@ -20,18 +20,26 @@ class RegisterView(GenericAPIView):
     注册试图
     """
     model = models.UserInfo
-    schema_class = user.LoginSchema
+    schema_class = user.RegisterSchema
 
     async def post(self, request):
         username = request.json.get("username", None)
         password = request.json.get("password", "")
         email = request.json.get("email", "")
 
-        if models.UserInfo.filter(username=username).first() or models.UserInfo.filter(email=email).first():
+        register_user = await models.UserInfo.filter(username=username).first()
+        register_email = await models.UserInfo.filter(email=email).first()
+        if register_user or register_email:
             return resp_json(FAIL, msg="用户已经存在")
 
-        await models.UserInfo.create(username=username, password=password, email=email)
-        return resp_json(msg="用户注册成功！")
+        context = {
+            "username": username,
+            "password": password,
+            "email": email
+        }
+
+        await models.UserInfo.create(**context)
+        return resp_json(msg="用户注册成功！", body=context)
 
 
 class LoginView(GenericAPIView):
@@ -48,11 +56,11 @@ class LoginView(GenericAPIView):
         if not username and not password:
             return resp_json(FAIL, msg="用户名密码错误")
 
-        user = await models.UserInfo.filter(username=username).first()
+        user_obj = await models.UserInfo.filter(username=username).first()
 
-        if username != user.username:
+        if username != user_obj.username:
             return resp_json(FAIL, msg="用户不存在")
-        if password != user.password:
+        if password != user_obj.password:
             return resp_json(FAIL, msg="密码错误！")
         token = generate_token(username)
         body = {

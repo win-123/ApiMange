@@ -26,8 +26,6 @@ class BaseModel(Model, metaclass=ModelMeta):
     重新定制 `Model`
     """
     id = fields.IntField(pk=True)
-    create_time = fields.DatetimeField(auto_now_add=True, verbose_name="创建时间")
-    update_time = fields.DatetimeField(auto_now=True, verbose_name="更新时间")
 
     @property
     def pk(self):
@@ -82,6 +80,7 @@ class UserInfo(BaseModel):
     """
     username = fields.CharField(verbose_name="用户名", max_length=64)
     password = fields.CharField(verbose_name="密码", max_length=125)
+    email = fields.CharField(verbose_name="邮箱", max_length=64)
 
     def __str__(self):
         return self.username
@@ -110,7 +109,7 @@ class DebugTalk(BaseModel):
     驱动表
     """
     code = fields.TextField(default="# Write you code", verbose_name="Python代码", null=False)
-    project = fields.ForeignKeyField("models.Project", unique=True, verbose_name="对应项目")
+    project = fields.ForeignKeyField("models.Project", verbose_name="对应项目")
 
     def __str__(self):
         return self.code

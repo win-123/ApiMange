@@ -47,6 +47,9 @@ prod = {
                 "user": "root",
                 "password": "123456",
                 "database": "apeland"
+            },
+            'OPTIONS': {
+                "init_command": "SET foreign_key_checks = 0;",
             }
         }
     }

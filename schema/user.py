@@ -12,3 +12,12 @@ class LoginSchema(BasicSchema):
     """
     username = fields.String()
     password = fields.String()
+
+
+class RegisterSchema(BasicSchema):
+    """
+    变量
+    """
+    username = fields.String()
+    password = fields.String()
+    email = fields.String()
