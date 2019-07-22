@@ -2,14 +2,11 @@
 # -*- coding:utf-8 -*-
 # @time  : 2019/7/3  下午6:20
 
-import os
-import json
 from schema import project
 from sanic import Blueprint
 from core.response import resp_json
 from core.status import FAIL
 import models
-from utils import prepare
 
 from .base import GenericAPIView
 
@@ -85,11 +82,27 @@ class ProjectDetailView(GenericAPIView):
         pk = self.request.args.get("project_id")
         if not pk:
             return resp_json(FAIL, msg="项目不存在！")
-        instance = await self.model.get_or_404(pk)
-        schema = self.get_schema(request)
-        result = schema.dump(instance)
+        queryset = await self.model.filter(id=pk).first()
+        api_count = await models.API.filter(project_id=pk).count()
+        case_count = await models.Case.filter(project_id=pk).count()
+        config_count = await models.Config.filter(project_id=pk).count()
+        variables_count = await models.Variables.filter(project_id=pk).count()
+        host_count = await models.HostIP.filter(project_id=pk).count()
+        report_count = await models.Report.filter(project_id=pk).count()
 
-        return resp_json(body=result.data)
+        data = {
+            "id": pk,
+            "name": queryset.name,
+            "desc": queryset.desc,
+            "api_count": api_count,
+            "case_count": case_count,
+            "config_count": config_count,
+            "variables_count": variables_count,
+            "host_count": host_count,
+            "report_count": report_count,
+        }
+
+        return resp_json(body=data)
 
 
 class DebugTalkView(GenericAPIView):
@@ -128,6 +141,15 @@ class TreeView(GenericAPIView):
     model = models.Relation
     schema_class = project.RelationSchema
 
+    async def get(self, request):
+        pk = self.request.args.get("project")
+        queryset = await self.model.filter(project_id=pk, type=self.request.args.get("type"))
+
+        schema = self.get_schema(request)
+        result = schema.dump(queryset, many=True)
+
+        return resp_json(body=result.data)
+
 
 class ApiView(GenericAPIView):
     """
@@ -135,6 +157,15 @@ class ApiView(GenericAPIView):
     """
     model = models.API
     schema_class = project.ApiSchema
+
+    async def get(self, request):
+        pk = self.request.args.get("project")
+        queryset = await self.model.filter(project_id=pk)
+
+        schema = self.get_schema(request)
+        result = schema.dump(queryset, many=True)
+
+        return resp_json(body=result.data)
 
 
 class ConfigView(GenericAPIView):
@@ -184,8 +215,7 @@ class ConfigView(GenericAPIView):
         return resp_json(result.data)
 
     async def delete(self, request):
-        print(request.json)
-        
+
         if request.json.get("id"):
             pk = request.json.get("id")
         else:
@@ -206,6 +236,15 @@ class CaseView(GenericAPIView):
     model = models.Case
     schema_class = project.CaseSchema
 
+    async def get(self, request):
+        pk = self.request.args.get("project")
+        queryset = await self.model.filter(project_id=pk)
+
+        schema = self.get_schema(request)
+        result = schema.dump(queryset, many=True)
+
+        return resp_json(body=result.data)
+
 
 class CaseStepView(GenericAPIView):
     """
@@ -213,6 +252,15 @@ class CaseStepView(GenericAPIView):
     """
     model = models.CaseStep
     schema_class = project.CaseStepSchema
+
+    async def get(self, request):
+        pk = self.request.args.get("project")
+        queryset = await self.model.filter(project_id=pk)
+
+        schema = self.get_schema(request)
+        result = schema.dump(queryset, many=True)
+
+        return resp_json(body=result.data)
 
 
 class HostIPView(GenericAPIView):
@@ -334,6 +382,110 @@ class ReportView(GenericAPIView):
     model = models.Report
     schema_class = project.ReportSchema
 
+    async def get(self, request):
+        pk = self.request.args.get("project")
+        queryset = await self.model.filter(project_id=pk)
+
+        schema = self.get_schema(request)
+        result = schema.dump(queryset, many=True)
+
+        return resp_json(body=result.data)
+
+    async def post(self, request):
+        project_id = request.json.get("project")
+        pro = await models.Project.filter(pk=project_id).first()
+
+        if not project_id:
+            return resp_json(FAIL, msg="项目不存在")
+        result = {
+            "value": request.json.get("value"),
+            "name": request.json.get("name"),
+            "project": pro,
+        }
+        await models.Report.create(**result)
+        return resp_json(msg="报告添加成功!")
+
+    async def patch(self, request):
+
+        pk = request.json.get("hostData")['id']
+        instance = await self.model.filter(pk=pk).first()
+        if not instance:
+            return resp_json(FAIL, msg="域名不存在！")
+        instance.name = request.json.get("hostData")["name"]
+        instance.value = request.json.get("hostData")["value"]
+
+        schema = self.get_schema(request)
+        result = schema.dump(instance)
+
+        await instance.save()
+
+        return resp_json(result.data)
+
+    async def delete(self, request):
+        pk = request.json.get("id")
+        instance = await self.model.get_or_404(pk)
+        if not instance:
+            return resp_json(FAIL, msg="环境变量不存在！")
+        await instance.delete()
+
+        return resp_json(msg="操作成功！")
+
+
+class ScheduleView(GenericAPIView):
+    """
+    定时任务
+    """
+    model = models.Schedule
+    schema_class = project.ScheduleSchema
+
+    async def get(self, request):
+        pk = self.request.args.get("project")
+        queryset = await self.model.filter(project_id=pk)
+
+        schema = self.get_schema(request)
+        result = schema.dump(queryset, many=True)
+
+        return resp_json(body=result.data)
+
+    # async def post(self, request):
+    #     project_id = request.json.get("project")
+    #     pro = await models.Project.filter(pk=project_id).first()
+    #
+    #     if not project_id:
+    #         return resp_json(FAIL, msg="项目不存在")
+    #     result = {
+    #         "value": request.json.get("value"),
+    #         "name": request.json.get("name"),
+    #         "project": pro,
+    #     }
+    #     await models.Report.create(**result)
+    #     return resp_json(msg="报告添加成功!")
+    #
+    # async def patch(self, request):
+    #
+    #     pk = request.json.get("hostData")['id']
+    #     instance = await self.model.filter(pk=pk).first()
+    #     if not instance:
+    #         return resp_json(FAIL, msg="域名不存在！")
+    #     instance.name = request.json.get("hostData")["name"]
+    #     instance.value = request.json.get("hostData")["value"]
+    #
+    #     schema = self.get_schema(request)
+    #     result = schema.dump(instance)
+    #
+    #     await instance.save()
+    #
+    #     return resp_json(result.data)
+    #
+    # async def delete(self, request):
+    #     pk = request.json.get("id")
+    #     instance = await self.model.get_or_404(pk)
+    #     if not instance:
+    #         return resp_json(FAIL, msg="环境变量不存在！")
+    #     await instance.delete()
+    #
+    #     return resp_json(msg="操作成功！")
+
 
 bp.add_route(ProjectView.as_view(), '/project/')
 bp.add_route(ProjectDetailView.as_view(), '/pro_detail/')
@@ -345,4 +497,5 @@ bp.add_route(CaseView.as_view(), '/case/')
 bp.add_route(CaseStepView.as_view(), '/case_step/')
 bp.add_route(HostIPView.as_view(), '/host_ip/')
 bp.add_route(VariablesView.as_view(), '/variables/')
-bp.add_route(ReportView.as_view(), '/report/')
+bp.add_route(ReportView.as_view(), '/reports/')
+bp.add_route(ScheduleView.as_view(), '/schedule/')

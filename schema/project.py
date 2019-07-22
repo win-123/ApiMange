@@ -21,6 +21,8 @@ class ProjectSchema(BasicSchema):
     name = fields.String()
     desc = fields.String()
     responsible = fields.String()
+    create_time = fields.DateTime()
+    update_time = fields.DateTime()
 
 
 class ProjectDetailSchema(BasicSchema):
@@ -31,13 +33,8 @@ class ProjectDetailSchema(BasicSchema):
     name = fields.String()
     desc = fields.String()
     responsible = fields.String()
-    count = fields.Method(method_name="get_project_detail_count")
-
-    def get_project_detail_count(self, instance):
-
-        result = prepare.get_project_detail(instance.pk)
-
-        return result
+    create_time = fields.DateTime()
+    update_time = fields.DateTime()
 
 
 class DebugTalkSchema(BasicSchema):
@@ -46,6 +43,8 @@ class DebugTalkSchema(BasicSchema):
     """
     id = fields.Integer()
     code = fields.String()
+    create_time = fields.DateTime()
+    update_time = fields.DateTime()
 
 
 class RelationSchema(BasicSchema):
@@ -55,6 +54,20 @@ class RelationSchema(BasicSchema):
     id = fields.Integer()
     tree = fields.String()
     type = fields.String()
+    maxId = fields.Method(method_name="get_max_id")
+    create_time = fields.DateTime()
+    update_time = fields.DateTime()
+
+    def get_max_id(self, instance):
+        if not instance.id:
+            return 0
+        for i in eval(instance.tree):
+
+            if not i["children"]:
+                return max(i["id"])
+
+            for j in i["children"]:
+                return j["id"]
 
 
 class ApiSchema(BasicSchema):
@@ -67,6 +80,8 @@ class ApiSchema(BasicSchema):
     url = fields.String()
     method = fields.String()
     relation = fields.Integer()
+    create_time = fields.DateTime()
+    update_time = fields.DateTime()
 
 
 class ConfigSchema(BasicSchema):
@@ -77,6 +92,8 @@ class ConfigSchema(BasicSchema):
     name = fields.String()
     body = fields.String()
     base_url = fields.String()
+    create_time = fields.DateTime()
+    update_time = fields.DateTime()
 
 
 class CaseSchema(BasicSchema):
@@ -86,8 +103,10 @@ class CaseSchema(BasicSchema):
     id = fields.Integer()
     name = fields.String()
     tag = fields.String()
-    count = fields.Integer()
+    length = fields.Integer()
     relation = fields.Integer()
+    create_time = fields.DateTime()
+    update_time = fields.DateTime()
 
 
 class CaseStepSchema(BasicSchema):
@@ -100,6 +119,8 @@ class CaseStepSchema(BasicSchema):
     url = fields.String()
     method = fields.String()
     step = fields.Integer()
+    create_time = fields.DateTime()
+    update_time = fields.DateTime()
 
 
 class HostIPSchema(BasicSchema):
@@ -109,6 +130,8 @@ class HostIPSchema(BasicSchema):
     id = fields.Integer()
     name = fields.String()
     value = fields.String()
+    create_time = fields.DateTime()
+    update_time = fields.DateTime()
 
 
 class VariablesSchema(BasicSchema):
@@ -118,6 +141,8 @@ class VariablesSchema(BasicSchema):
     id = fields.Integer()
     key = fields.String()
     value = fields.String()
+    create_time = fields.DateTime()
+    update_time = fields.DateTime()
 
 
 class ReportSchema(BasicSchema):
@@ -128,3 +153,21 @@ class ReportSchema(BasicSchema):
     name = fields.String()
     type = fields.String()
     summary = fields.String()
+    create_time = fields.DateTime()
+    update_time = fields.DateTime()
+
+
+class ScheduleSchema(BasicSchema):
+    """
+    报告
+    """
+    id = fields.Integer()
+    name = fields.String()
+    identity = fields.String()
+    send_type = fields.Integer()
+    config = fields.String()
+    receiver = fields.String()
+    copy = fields.String()
+    status = fields.Integer()
+    create_time = fields.DateTime()
+    update_time = fields.DateTime()

@@ -26,6 +26,8 @@ class BaseModel(Model, metaclass=ModelMeta):
     重新定制 `Model`
     """
     id = fields.IntField(pk=True)
+    create_time = fields.DatetimeField(auto_now_add=True, verbose_name="创建时间")
+    update_time = fields.DatetimeField(auto_now=True, verbose_name="更新时间")
 
     @property
     def pk(self):
@@ -163,7 +165,7 @@ class Case(BaseModel):
     )
     name = fields.CharField(verbose_name="用例名字", max_length=100)
     tag = fields.IntField(verbose_name="用例标签", choices=tag_types)
-    count = fields.IntField(verbose_name="API数量")
+    length = fields.IntField(verbose_name="API数量")
     relation = fields.IntField(verbose_name="节点ID")
     project = fields.ForeignKeyField('models.Project')
 
@@ -216,7 +218,7 @@ class Variables(BaseModel):
     project = fields.ForeignKeyField("models.Project")
 
     def __str__(self):
-        return self.name
+        return self.key
 
     class Meta:
         table = f"{BASE_APP_NAME}_Variables"
@@ -257,3 +259,33 @@ class Relation(BaseModel):
 
     class Meta:
         table = f"{BASE_APP_NAME}_Relation"
+
+
+class Schedule(BaseModel):
+    """
+    定时任务信息表
+    """
+    triggers_type = (
+        (1, "始终发送"),
+        (2, "仅失败发送"),
+        (3, "不发送"),
+    )
+    status_type = (
+        (1, "可执行"),
+        (2, "不可执行"),
+        (3, "执行中"),
+    )
+    name = fields.CharField(verbose_name="任务名称", unique=True, null=False, max_length=100)
+    identity = fields.CharField(verbose_name="任务ID", unique=True, null=False, max_length=100)
+    send_type = fields.IntField(choices=triggers_type, default=1, verbose_name="发送策略")
+    config = fields.TextField(verbose_name="任务分配")
+    receiver = fields.CharField(verbose_name="接收人", max_length=100)
+    copy = fields.CharField(verbose_name="抄送人", max_length=100)
+    status = fields.IntField(choices=status_type, default=1, verbose_name="任务状态")
+    project = fields.ForeignKeyField("models.Project")
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        table = f"{BASE_APP_NAME}_Schedule"

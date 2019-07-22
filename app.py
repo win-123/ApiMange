@@ -2,11 +2,6 @@
 # -*- coding:utf-8 -*-
 # @time  : 2019/7/3  下午2:16
 
-import os
-
-import asyncio
-
-import logging
 from initial import init_db
 from config import config_info
 from werkzeug.utils import find_modules, import_string
