@@ -14,7 +14,7 @@ from threading import Thread
 import requests
 import yaml
 from bs4 import BeautifulSoup
-from httprunner import HttpRunner, logger
+from httprunner.api import HttpRunner, logger
 from requests.cookies import RequestsCookieJar
 
 import models
@@ -176,7 +176,7 @@ def load_debugtalk(project):
         project: int
     """
     # debugtalk.py
-    code = models.Debugtalk.objects.get(project__id=project).code
+    code = models.DebugTalk.get(project__id=project)
 
     file_path = os.path.join(tempfile.mkdtemp(prefix='FasterRunner'), "debugtalk.py")
     FileLoader.dump_python_file(file_path, code)

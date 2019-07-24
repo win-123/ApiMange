@@ -7,6 +7,7 @@ from sanic import Blueprint
 from core.response import resp_json
 from core.status import FAIL
 import models
+from utils.runner import DebugCode
 
 from .base import GenericAPIView
 
@@ -120,9 +121,17 @@ class DebugTalkView(GenericAPIView):
 
         return resp_json(body=code)
 
+    async def post(self, request):
+
+        code = request.json[0].get("code")
+        debug = DebugCode(code)
+        debug.run()
+
+        return resp_json(msg="项目运行成功!")
+
     async def patch(self, request):
         project_id = request.json.get("project_id")
-        code = request.json.get("code")["code"]
+        code = request.json.get("code")
         pro = await models.Project.filter(pk=project_id).first()
 
         result = {
@@ -280,6 +289,7 @@ class HostIPView(GenericAPIView):
         return resp_json(body=result.data)
 
     async def post(self, request):
+
         project_id = request.json.get("project")
         pro = await models.Project.filter(pk=project_id).first()
 
