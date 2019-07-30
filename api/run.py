@@ -22,14 +22,15 @@ class RunApiView(GenericAPIView):
         api = await models.API.filter(id=self.request.args.get("id")).first()
         config = await models.Config.filter(name=self.request.args.get("config")).first()
 
-        config_body = None if config == "请选择" else config.body
+        debug_talk = await models.DebugTalk.filter(project_id=api.project_id).first()
 
-        summary = loader.debug_api(api.body, api.project_id, config=config_body)
+        variables = await models.Variables.filter(project_id=api.project_id).values("key", "value")
 
-        print(44444444, summary)
+        config_body = None if self.request.args.get("config") == "请选择" else eval(config.body)
+
+        summary = loader.debug_api(eval(api.body), debug_talk.code, variables, config=config_body )
 
         return resp_json()
-
 
 
 bp.add_route(RunApiView.as_view(), '/run_api_pk/')

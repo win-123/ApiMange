@@ -1,4 +1,5 @@
 import models
+# from djcelery import models as celery_models
 from utils.parser import Format
 
 
@@ -7,71 +8,61 @@ def get_counter(model, pk=None):
     统计相关表长度
     """
     if pk:
-        return model.filter(project_id=pk).count()
+        return model.objects.filter(project__id=pk).count()
     else:
-        return model.count()
+        return model.objects.count()
 
 
 def get_project_detail(pk):
     """
     项目详细统计信息
     """
-    # team_count = get_counter(models.Team, pk=pk)
+    api_count = get_counter(models.API, pk=pk)
+    case_count = get_counter(models.Case, pk=pk)
+    config_count = get_counter(models.Config, pk=pk)
+    variables_count = get_counter(models.Variables, pk=pk)
+    report_count = get_counter(models.Report, pk=pk)
+    host_count = get_counter(models.HostIP, pk=pk)
+    task_count = celery_models.PeriodicTask.objects.filter(description=pk).count()
 
-    # api_count = get_counter(models.API, pk=pk)
-    # case_count = get_counter(models.Case, pk=pk)
-    # config_count = get_counter(models.Config, pk=pk)
-    # variables_count = get_counter(models.Variables, pk=pk)
-    # report_count = get_counter(models.Report, pk=pk)
-
-    api_count = models.API.filter(project_id=pk).count()
-    case_count = models.Case.filter(project_id=pk).count()
-    config_count = models.Config.filter(project_id=pk).count()
-    variables_count = models.Variables.filter(project_id=pk).count()
-    report_count = models.Report.filter(project_id=pk).count()
-
-    data = {
+    return {
         "api_count": api_count,
         "case_count": case_count,
+        "task_count": task_count,
         "config_count": config_count,
         "variables_count": variables_count,
         "report_count": report_count,
+        "host_count":host_count
     }
-
-    return data
 
 
 def project_init(project):
+    """新建项目初始化
     """
-    新建项目初始化
-    """
-    tree = [{
-        "id": 1,
-        "label": "默认分组",
-        "children": []
-    }]
+
     # 自动生成默认debugtalk.py
-    models.DebugTalk.create(project=project)
+    models.Debugtalk.objects.create(project=project)
     # 自动生成API tree
-    models.Relation.create(project=project, tree=tree)
+    models.Relation.objects.create(project=project)
     # 自动生成Test Tree
-    models.Relation.create(project=project, type=2, tree=tree)
+    models.Relation.objects.create(project=project, type=2)
 
 
 def project_end(project):
+    """删除项目相关表 filter不会报异常 最好不用get
     """
-    删除项目相关表 filter不会报异常 最好不用get
-    """
-    models.DebugTalk.filter(project=project).delete()
-    # models.Team.filter(project=project).delete()
-    models.Config.filter(project=project).delete()
-    models.API.filter(project=project).delete()
-    models.Relation.filter(project=project).delete()
+    models.Debugtalk.objects.filter(project=project).delete()
+    models.Config.objects.filter(project=project).delete()
+    models.API.objects.filter(project=project).delete()
+    models.Relation.objects.filter(project=project).delete()
+    models.Report.objects.filter(project=project).delete()
+    models.Variables.objects.filter(project=project).delete()
+    celery_models.PeriodicTask.objects.filter(description=project).delete()
 
-    case = models.Case.filter(project=project).values_list('id')
+    case = models.Case.objects.filter(project=project).values_list('id')
 
     for case_id in case:
-        models.CaseStep.filter(case__id=case_id).delete()
+        models.CaseStep.objects.filter(case__id=case_id).delete()
 
 
 def tree_end(params, project):
@@ -86,22 +77,21 @@ def tree_end(params, project):
     node = params['node']
 
     if type == 1:
-        models.API. \
+        models.API.objects. \
             filter(relation=node, project=project).delete()
 
     # remove node testcase
     elif type == 2:
-        case = models.Case. \
+        case = models.Case.objects. \
             filter(relation=node, project=project).values('id')
 
         for case_id in case:
-            models.CaseStep.filter(case__id=case_id['id']).delete()
-            models.Case.filter(id=case_id['id']).delete()
+            models.CaseStep.objects.filter(case__id=case_id['id']).delete()
+            models.Case.objects.filter(id=case_id['id']).delete()
 
 
 def update_casestep(body, case):
-
-    step_list = list(models.CaseStep.filter(case=case).values('id'))
+    step_list = list(models.CaseStep.objects.filter(case=case).values('id'))
 
     for index in range(len(body)):
 
@@ -116,9 +106,11 @@ def update_casestep(body, case):
 
         except KeyError:
             if 'case' in test.keys():
-                case_step = models.CaseStep.get(id=test['id'])
+                case_step = models.CaseStep.objects.get(id=test['id'])
+            elif test["body"]["method"] == "config":
+                case_step = models.Config.objects.get(name=test['body']['name'])
             else:
-                case_step = models.API.get(id=test['id'])
+                case_step = models.API.objects.get(id=test['id'])
 
             new_body = eval(case_step.body)
             name = test['body']['name']
@@ -126,8 +118,12 @@ def update_casestep(body, case):
             if case_step.name != name:
                 new_body['name'] = name
 
-            url = test['body']['url']
-            method = test['body']['method']
+            if test["body"]["method"] == "config":
+                url = ""
+                method = "config"
+            else:
+                url = test['body']['url']
+                method = test['body']['method']
 
         kwargs = {
             "name": name,
@@ -137,15 +133,15 @@ def update_casestep(body, case):
             "step": index,
         }
         if 'case' in test.keys():
-            models.CaseStep.filter(id=test['id']).update(**kwargs)
+            models.CaseStep.objects.filter(id=test['id']).update(**kwargs)
             step_list.remove({"id": test['id']})
         else:
             kwargs['case'] = case
-            models.CaseStep.create(**kwargs)
+            models.CaseStep.objects.create(**kwargs)
 
     #  去掉多余的step
     for content in step_list:
-        models.CaseStep.filter(id=content['id']).delete()
+        models.CaseStep.objects.filter(id=content['id']).delete()
 
 
 def generate_casestep(body, case):
@@ -158,7 +154,6 @@ def generate_casestep(body, case):
         method: str,
         url: str
     }]
-
     """
     #  index也是case step的执行顺序
 
@@ -174,15 +169,22 @@ def generate_casestep(body, case):
             method = format_http.method
 
         except KeyError:
-            api = models.API.get(id=test['id'])
-            new_body = eval(api.body)
-            name = test['body']['name']
+            if test["body"]["method"] == "config":
+                name = test["body"]["name"]
+                method = test["body"]["method"]
+                config = models.Config.objects.get(name=name)
+                url = config.base_url
+                new_body = eval(config.body)
+            else:
+                api = models.API.objects.get(id=test['id'])
+                new_body = eval(api.body)
+                name = test['body']['name']
 
-            if api.name != name:
-                new_body['name'] = name
+                if api.name != name:
+                    new_body['name'] = name
 
-            url = test['body']['url']
-            method = test['body']['method']
+                url = test['body']['url']
+                method = test['body']['method']
 
         kwargs = {
             "name": name,
@@ -193,12 +195,12 @@ def generate_casestep(body, case):
             "case": case
         }
 
-        models.CaseStep.create(**kwargs)
+        models.CaseStep.objects.create(**kwargs)
 
 
 def case_end(pk):
     """
     pk: int case id
     """
-    models.CaseStep.filter(case__id=pk).delete()
-    models.Case.filter(id=pk).delete()
+    models.CaseStep.objects.filter(case__id=pk).delete()
+    models.Case.objects.filter(id=pk).delete()

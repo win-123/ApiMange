@@ -9,10 +9,9 @@ import shutil
 import sys
 import tempfile
 import types
-from threading import Thread
-
 import requests
 import yaml
+
 from bs4 import BeautifulSoup
 from httprunner.api import HttpRunner, logger
 from requests.cookies import RequestsCookieJar
@@ -20,7 +19,7 @@ from requests.cookies import RequestsCookieJar
 import models
 from utils.parser import Format
 
-logger.setup_logger('DEBUG')
+logger.setup_logger('INFO')
 
 TEST_NOT_EXISTS = {
     "code": "0102",
@@ -121,16 +120,12 @@ class FileLoader(object):
         return debugtalk_module
 
 
-def parse_tests(testcases, debugtalk, name=None, config=None):
+def parse_tests(testcases, debugtalk, project, extra, name=None, config=None):
+    """get test case structure
+        testcases: list
+        config: none or dict
+        debugtalk: dict
     """
-
-    :param testcases: list
-    :param debugtalk: dict
-    :param name:
-    :param config: none or dict
-    :return:
-    """
-
     refs = {
         "env": {},
         "def-api": {},
@@ -146,6 +141,13 @@ def parse_tests(testcases, debugtalk, name=None, config=None):
     }
 
     if config:
+        if "parameters" in config.keys():
+            for content in config["parameters"]:
+                for key, value in content.items():
+                    try:
+                        content[key] = eval(value.replace("\n", ""))
+                    except:
+                        content[key] = value
         testset["config"] = config
 
     if name:
@@ -153,7 +155,7 @@ def parse_tests(testcases, debugtalk, name=None, config=None):
 
     global_variables = []
 
-    for variables in models.Variables.objects.all().values("key", "value"):
+    for variables in extra:
         if testset["config"].get("variables"):
             for content in testset["config"]["variables"]:
                 if variables["key"] not in content.keys():
@@ -171,14 +173,13 @@ def parse_tests(testcases, debugtalk, name=None, config=None):
     return testset
 
 
-def load_debugtalk(project):
+def load_debugtalk(code):
     """import debugtalk.py in sys.path and reload
         project: int
     """
     # debugtalk.py
-    code = models.DebugTalk.get(project__id=project)
 
-    file_path = os.path.join(tempfile.mkdtemp(prefix='FasterRunner'), "debugtalk.py")
+    file_path = os.path.join(tempfile.mkdtemp(prefix='ApiManage'), "debugtalk.py")
     FileLoader.dump_python_file(file_path, code)
     debugtalk = FileLoader.load_python_module(os.path.dirname(file_path))
 
@@ -186,7 +187,7 @@ def load_debugtalk(project):
     return debugtalk
 
 
-def debug_suite(suite, project, obj, config=None, save=True):
+def debug_suite(suite, project, obj, config, save=True):
     """debug suite
            suite :list
            pk: int
@@ -195,13 +196,12 @@ def debug_suite(suite, project, obj, config=None, save=True):
     if len(suite) == 0:
         return TEST_NOT_EXISTS
 
-    debugtalk = load_debugtalk(project)
-
     test_sets = []
-
+    debugtalk = load_debugtalk(project)
     for index in range(len(suite)):
         # copy.deepcopy 修复引用bug
-        testcases = copy.deepcopy(parse_tests(suite[index], debugtalk, name=obj[index]['name'], config=config))
+        testcases = copy.deepcopy(
+            parse_tests(suite[index], debugtalk, project, name=obj[index]['name'], config=config[index]))
         test_sets.append(testcases)
 
     kwargs = {
@@ -210,13 +210,13 @@ def debug_suite(suite, project, obj, config=None, save=True):
     runner = HttpRunner(**kwargs)
     runner.run(test_sets)
     summary = parse_summary(runner.summary)
-
     if save:
         save_summary("", summary, project, type=1)
+
     return summary
 
 
-def debug_api(api, project, name=None, config=None, save=True):
+def debug_api(api, project, extra, name=None, config=None, save=True,):
     """debug api
         api :dict or list
         project: int
@@ -231,18 +231,19 @@ def debug_api(api, project, name=None, config=None, save=True):
         """
         api = [api]
 
-    testcase_list = [parse_tests(api, load_debugtalk(project), name=name, config=config)]
+    test_case_list = [parse_tests(api, load_debugtalk(project), project, extra, name=name, config=config)]
 
     kwargs = {
         "failfast": False
     }
 
     runner = HttpRunner(**kwargs)
-    runner.run(testcase_list)
-    summary = parse_summary(runner.summary)
+    runner.run(test_case_list)
 
+    summary = parse_summary(runner.summary)
     if save:
         save_summary("", summary, project, type=1)
+
     return summary
 
 
@@ -275,18 +276,6 @@ def load_test(test, project=None):
             testcase['name'] = name
 
     return testcase
-
-
-def back_async(func):
-    """异步执行装饰器
-    """
-
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        thread = Thread(target=func, args=args, kwargs=kwargs)
-        thread.start()
-
-    return wrapper
 
 
 def parse_summary(summary):
@@ -329,19 +318,3 @@ def save_summary(name, summary, project, type=2):
         "type": type,
         "summary": json.dumps(summary, ensure_ascii=False),
     })
-
-
-@back_async
-def async_debug_api(api, project, name, config=None):
-    """异步执行api
-    """
-    summary = debug_api(api, project, save=False, config=config)
-    save_summary(name, summary, project)
-
-
-@back_async
-def async_debug_suite(suite, project, report, obj, config=None):
-    """异步执行suite
-    """
-    summary = debug_suite(suite, project, obj, config=config, save=False)
-    save_summary(report, summary, project)

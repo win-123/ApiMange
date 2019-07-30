@@ -457,19 +457,24 @@ class ScheduleView(GenericAPIView):
 
         return resp_json(body=result.data)
 
-    # async def post(self, request):
-    #     project_id = request.json.get("project")
-    #     pro = await models.Project.filter(pk=project_id).first()
-    #
-    #     if not project_id:
-    #         return resp_json(FAIL, msg="项目不存在")
-    #     result = {
-    #         "value": request.json.get("value"),
-    #         "name": request.json.get("name"),
-    #         "project": pro,
-    #     }
-    #     await models.Report.create(**result)
-    #     return resp_json(msg="报告添加成功!")
+    async def post(self, request):
+        project_id = request.json.get("project")
+        pro = await models.Project.filter(pk=project_id).first()
+
+        if not project_id:
+            return resp_json(FAIL, msg="项目不存在")
+        result = {
+            "name": request.json.get("name"),
+            "identity": request.json.get("data"),
+            "status": request.json.get("switch"),
+            "send_type": request.json.get("strategy"),
+            "config": request.json.get("corntab"),
+            "receiver": request.json.get("receiver"),
+            "copy": request.json.get("copy"),
+            "project": pro,
+        }
+        await models.Schedule.create(**result)
+        return resp_json(msg="报告添加成功!")
     #
     # async def patch(self, request):
     #
