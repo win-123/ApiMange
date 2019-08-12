@@ -26,6 +26,7 @@ var/
 *.egg
 wheels/
 *.egg-info/
+reports/
 
 
 # PyInstaller

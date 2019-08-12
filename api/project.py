@@ -168,13 +168,87 @@ class ApiView(GenericAPIView):
     schema_class = project.ApiSchema
 
     async def get(self, request):
-        pk = self.request.args.get("project")
-        queryset = await self.model.filter(project_id=pk)
+        if self.request.args.get("row"):
+            queryset = await self.model.filter(id=self.request.args.get("row"))
+            schema = self.get_schema(request)
+            result = schema.dump(queryset, many=True)
+            return resp_json(body=result.data)
+
+        else:
+            pk = self.request.args.get("project")
+            queryset = await self.model.filter(project_id=pk)
+
+            schema = self.get_schema(request)
+            result = schema.dump(queryset, many=True)
+
+            return resp_json(body=result.data)
+
+    async def post(self, request):
+        print(232222222, request.json)
+
+        project_id = request.json.get("project")
+        pro = await models.Project.filter(pk=project_id).first()
+
+        if not project_id:
+            return resp_json(FAIL, msg="项目不存在")
+        test_config = {
+            "name": request.json.get("name"),
+            "request": {
+                "url": request.json.get("url"),
+                "method": request.json.get("method"),
+                "headers": request.json.get("header")["header"],
+                "form": request.json.get("request")["form"]["data"],
+                "json": request.json.get("request")["json"],
+                "params": request.json.get("request")["params"]["params"],
+            },
+            "extract": request.json.get("extract")["extract"],
+            "validate": request.json.get("validate")["validate"],
+            "setup_hooks": request.json.get("hooks")["setup_hooks"],
+            "teardown_hooks": request.json.get("hooks")["teardown_hooks"],
+        }
+
+        print(99999999, test_config)
+
+        result = {
+            "name": request.json.get("name"),
+            "body": test_config,
+            "url": request.json.get("url"),
+            "method": request.json.get("method"),
+            "relation": request.json.get("nodeId"),
+            "project": pro,
+        }
+
+        await models.API.create(**result)
+        return resp_json(msg="接口添加成功!")
+
+    async def patch(self, request):
+        pk = request.json.get("variableData")['id']
+        instance = await self.model.filter(pk=pk).first()
+        if not instance:
+            return resp_json(FAIL, msg="接口不存在！")
+        instance.key = request.json.get("variableData")["key"]
+        instance.value = request.json.get("variableData")["value"]
 
         schema = self.get_schema(request)
-        result = schema.dump(queryset, many=True)
+        result = schema.dump(instance)
 
-        return resp_json(body=result.data)
+        await instance.save()
+
+        return resp_json(result.data)
+
+    async def delete(self, request):
+
+        if request.json.get("id"):
+            pk = request.json.get("id")
+        else:
+            pk = request.json[0].get("id")
+
+        instance = await self.model.get_or_404(pk)
+        if not instance:
+            return resp_json(FAIL, msg=" 变量不存在！")
+        await instance.delete()
+
+        return resp_json(msg="操作成功！")
 
 
 class ConfigView(GenericAPIView):

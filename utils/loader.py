@@ -126,6 +126,17 @@ def parse_tests(testcases, debugtalk, project, extra, name=None, config=None):
         config: none or dict
         debugtalk: dict
     """
+    print(777777777, testcases)
+
+    struct = {
+        "project_mapping": {
+            "PWD": "",
+            "functions": {},
+            "env": {}
+        },
+        "testcases": []
+    }
+
     refs = {
         "env": {},
         "def-api": {},
@@ -134,7 +145,7 @@ def parse_tests(testcases, debugtalk, project, extra, name=None, config=None):
     }
     testset = {
         "config": {
-            "name": testcases[-1]["name"],
+            "name": testcases["name"],
             "variables": []
         },
         "teststeps": testcases,
@@ -170,7 +181,9 @@ def parse_tests(testcases, debugtalk, project, extra, name=None, config=None):
 
     testset["config"]["refs"] = refs
 
-    return testset
+    struct["testcases"].append(testset)
+
+    return struct
 
 
 def load_debugtalk(code):
@@ -229,16 +242,17 @@ def debug_api(api, project, extra, name=None, config=None, save=True,):
         """
         httprunner scripts or teststeps
         """
-        api = [api]
+        api = api
 
-    test_case_list = [parse_tests(api, load_debugtalk(project), project, extra, name=name, config=config)]
+    test_case_dict = parse_tests(api, load_debugtalk(project), project, extra, name=name, config=config)
 
     kwargs = {
         "failfast": False
     }
 
     runner = HttpRunner(**kwargs)
-    runner.run(test_case_list)
+    print(343434, test_case_dict)
+    runner.run(test_case_dict)
 
     summary = parse_summary(runner.summary)
     if save:
