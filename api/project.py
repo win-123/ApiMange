@@ -184,8 +184,6 @@ class ApiView(GenericAPIView):
             return resp_json(body=result.data)
 
     async def post(self, request):
-        print(232222222, request.json)
-
         project_id = request.json.get("project")
         pro = await models.Project.filter(pk=project_id).first()
 
@@ -206,8 +204,6 @@ class ApiView(GenericAPIView):
             "setup_hooks": request.json.get("hooks")["setup_hooks"],
             "teardown_hooks": request.json.get("hooks")["teardown_hooks"],
         }
-
-        print(99999999, test_config)
 
         result = {
             "name": request.json.get("name"),

@@ -126,7 +126,6 @@ def parse_tests(testcases, debugtalk, project, extra, name=None, config=None):
         config: none or dict
         debugtalk: dict
     """
-    print(777777777, testcases)
 
     struct = {
         "project_mapping": {

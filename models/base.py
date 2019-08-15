@@ -198,7 +198,7 @@ class HostIP(BaseModel):
     """
     主机配置
     """
-    name = fields.CharField(verbose_name="用例名字", max_length=100)
+    name = fields.CharField(verbose_name="环境名称", max_length=100)
     value = fields.TextField(verbose_name="信息描述")
     project = fields.ForeignKeyField("models.Project")
 
@@ -255,7 +255,7 @@ class Relation(BaseModel):
     type = fields.IntField(verbose_name="树类型", default=1)
 
     def __str__(self):
-        return self.name
+        return self.project
 
     class Meta:
         table = f"{BASE_APP_NAME}_Relation"
