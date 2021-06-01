@@ -71,7 +71,7 @@ Tempita==0.5.2
 tortoise-orm==0.12.2
 tzlocal==1.4
 ujson==1.35
-urllib3==1.24.1
+urllib3==1.26.5
 uvloop==0.12.2
 vine==1.1.4
 visitor==0.1.3
