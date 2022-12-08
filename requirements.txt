@@ -10,7 +10,7 @@ beautifulsoup4==4.7.1
 billiard==3.5.0.4
 blinker==1.4
 cache==1.0.3
-certifi==2018.10.15
+certifi==2022.12.7
 cffi==1.11.5
 chardet==3.0.4
 ciso8601==2.1.1
